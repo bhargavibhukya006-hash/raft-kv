@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package kv;
+
+option go_package = "github.com/distkv/proto";
+
+// KV is the core service that clients talk to.
+// In a Raft cluster, only the leader can accept writes.
+// The leader_hint field lets smart clients automatically retry
+// against the correct node without needing a separate proxy.
+service KV {
+  // Set stores a key-value pair. Must be routed to the Raft leader.
+  // If the receiving node is not the leader, it returns leader_hint
+  // containing the leader's gRPC address so the client can retry.
+  rpc Set(SetRequest) returns (SetResponse);
+
+  // Get retrieves a value by key.
+  // For strong consistency, only the leader serves reads.
+  // A future optimization (ReadIndex / Lease reads) can allow
+  // followers to serve reads without a full round-trip to leader.
+  rpc Get(GetRequest) returns (GetResponse);
+
+  // Delete removes a key from the store. Like Set, must go to the leader.
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+// ---- Request / Response messages ----
+
+message SetRequest {
+  string key   = 1;
+  string value = 2;
+}
+
+message SetResponse {
+  bool   success     = 1;
+  // leader_hint is the gRPC address of the current leader.
+  // Empty if this node is the leader. Clients should retry there.
+  string leader_hint = 2;
+  string error       = 3;
+}
+
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  string value       = 1;
+  bool   found       = 2;
+  // leader_hint is set when the receiving node is not the leader
+  // and strong consistency is required (leader-only reads).
+  string leader_hint = 3;
+}
+
+message DeleteRequest {
+  string key = 1;
+}
+
+message DeleteResponse {
+  bool   success     = 1;
+  string leader_hint = 2;
+  string error       = 3;
+}

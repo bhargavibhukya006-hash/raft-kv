@@ -1,0 +1,130 @@
+services:
+  node1:
+    build: .
+    container_name: distkv-node1
+    environment:
+      NODE_ID: "node1"
+      GRPC_ADDR: ":9001"
+      HTTP_ADDR: ":8001"
+      RAFT_ADDR: "node1:7001"
+      DATA_DIR: "/data/node1"
+      # Bootstrap=true: node1 initializes the cluster on first start
+      BOOTSTRAP: "true"
+      # All 5 peers (including self) in "nodeID=raftAddr" format
+      PEERS: "node1=node1:7001,node2=node2:7002,node3=node3:7003,node4=node4:7004,node5=node5:7005"
+    ports:
+      - "9001:9001"   # gRPC — exposed to host for clients and chaos tests
+      - "7001:7001"   # Raft — exposed for debugging
+      - "8001:8001"   # HTTP Dashboard — web interface
+    volumes:
+      - node1-data:/data
+    networks:
+      - distkv-net
+    restart: unless-stopped
+
+  node2:
+    build: .
+    container_name: distkv-node2
+    environment:
+      NODE_ID: "node2"
+      GRPC_ADDR: ":9002"
+      HTTP_ADDR: ":8002"
+      RAFT_ADDR: "node2:7002"
+      DATA_DIR: "/data/node2"
+      BOOTSTRAP: "false"
+      PEERS: "node1=node1:7001,node2=node2:7002,node3=node3:7003,node4=node4:7004,node5=node5:7005"
+    ports:
+      - "9002:9002"
+      - "7002:7002"
+      - "8002:8002"
+    volumes:
+      - node2-data:/data
+    networks:
+      - distkv-net
+    restart: unless-stopped
+    depends_on:
+      - node1
+
+  node3:
+    build: .
+    container_name: distkv-node3
+    environment:
+      NODE_ID: "node3"
+      GRPC_ADDR: ":9003"
+      HTTP_ADDR: ":8003"
+      RAFT_ADDR: "node3:7003"
+      DATA_DIR: "/data/node3"
+      BOOTSTRAP: "false"
+      PEERS: "node1=node1:7001,node2=node2:7002,node3=node3:7003,node4=node4:7004,node5=node5:7005"
+    ports:
+      - "9003:9003"
+      - "7003:7003"
+      - "8003:8003"
+    volumes:
+      - node3-data:/data
+    networks:
+      - distkv-net
+    restart: unless-stopped
+    depends_on:
+      - node1
+
+  node4:
+    build: .
+    container_name: distkv-node4
+    environment:
+      NODE_ID: "node4"
+      GRPC_ADDR: ":9004"
+      HTTP_ADDR: ":8004"
+      RAFT_ADDR: "node4:7004"
+      DATA_DIR: "/data/node4"
+      BOOTSTRAP: "false"
+      PEERS: "node1=node1:7001,node2=node2:7002,node3=node3:7003,node4=node4:7004,node5=node5:7005"
+    ports:
+      - "9004:9004"
+      - "7004:7004"
+      - "8004:8004"
+    volumes:
+      - node4-data:/data
+    networks:
+      - distkv-net
+    restart: unless-stopped
+    depends_on:
+      - node1
+
+  node5:
+    build: .
+    container_name: distkv-node5
+    environment:
+      NODE_ID: "node5"
+      GRPC_ADDR: ":9005"
+      HTTP_ADDR: ":8005"
+      RAFT_ADDR: "node5:7005"
+      DATA_DIR: "/data/node5"
+      BOOTSTRAP: "false"
+      PEERS: "node1=node1:7001,node2=node2:7002,node3=node3:7003,node4=node4:7004,node5=node5:7005"
+    ports:
+      - "9005:9005"
+      - "7005:7005"
+      - "8005:8005"
+    volumes:
+      - node5-data:/data
+    networks:
+      - distkv-net
+    restart: unless-stopped
+    depends_on:
+      - node1
+
+# Named volumes persist Raft log and snapshots across container restarts.
+# This ensures committed data survives even if a container is restarted.
+volumes:
+  node1-data:
+  node2-data:
+  node3-data:
+  node4-data:
+  node5-data:
+
+# Custom bridge network so containers resolve each other by service name.
+# e.g., "node2:7002" resolves correctly without /etc/hosts hacks.
+networks:
+  distkv-net:
+    driver: bridge
